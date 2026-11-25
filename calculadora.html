@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1c1c1e;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .calc {
+    width: 320px;
+    background: #2c2c2e;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+  .visor {
+    background: #000;
+    color: #fff;
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: right;
+    margin-bottom: 14px;
+  }
+  .conta {
+    font-size: 14px;
+    color: #8e8e93;
+    min-height: 18px;
+    word-break: break-all;
+  }
+  .valor {
+    font-size: 40px;
+    font-weight: 300;
+    word-break: break-all;
+  }
+  .teclado {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  button {
+    height: 60px;
+    border: 0;
+    border-radius: 50%;
+    font-size: 22px;
+    color: #fff;
+    background: #505054;
+    cursor: pointer;
+    transition: filter .12s;
+  }
+  button:active { filter: brightness(1.4); }
+  .op { background: #ff9f0a; }
+  .fn { background: #a5a5a5; color: #000; }
+  .zero { grid-column: span 2; border-radius: 30px; }
+</style>
+</head>
+<body>
+  <div class="calc">
+    <div class="visor">
+      <div class="conta" id="conta"></div>
+      <div class="valor" id="valor">0</div>
+    </div>
+    <div class="teclado">
+      <button class="fn" data-acao="limpar">AC</button>
+      <button class="fn" data-acao="sinal">+/−</button>
+      <button class="fn" data-acao="porcento">%</button>
+      <button class="op" data-op="/">÷</button>
+
+      <button data-num="7">7</button>
+      <button data-num="8">8</button>
+      <button data-num="9">9</button>
+      <button class="op" data-op="*">×</button>
+
+      <button data-num="4">4</button>
+      <button data-num="5">5</button>
+      <button data-num="6">6</button>
+      <button class="op" data-op="-">−</button>
+
+      <button data-num="1">1</button>
+      <button data-num="2">2</button>
+      <button data-num="3">3</button>
+      <button class="op" data-op="+">+</button>
+
+      <button class="zero" data-num="0">0</button>
+      <button data-acao="virgula">,</button>
+      <button class="op" data-acao="igual">=</button>
+    </div>
+  </div>
+
+<script>
+  const elValor = document.getElementById('valor');
+  const elConta = document.getElementById('conta');
+
+  let atual = '0';      // número sendo digitado
+  let anterior = null;  // primeiro operando
+  let operador = null;
+  let reiniciar = false; // próximo dígito começa um número novo
+
+  const simbolos = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+
+  function mostrar() {
+    elValor.textContent = atual.replace('.', ',');
+    elConta.textContent = anterior !== null && operador
+      ? String(anterior).replace('.', ',') + ' ' + simbolos[operador]
+      : '';
+  }
+
+  function digitar(n) {
+    if (reiniciar) { atual = '0'; reiniciar = false; }
+    atual = atual === '0' ? n : atual + n;
+    mostrar();
+  }
+
+  function virgula() {
+    if (reiniciar) { atual = '0'; reiniciar = false; }
+    if (!atual.includes('.')) atual += '.';
+    mostrar();
+  }
+
+  function calcular(a, b, op) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return b === 0 ? NaN : a / b;
+    }
+  }
+
+  function arredonda(n) {
+    if (!isFinite(n)) return 'Erro';
+    return String(parseFloat(n.toFixed(10)));
+  }
+
+  function escolherOperador(op) {
+    if (operador && !reiniciar) resolver();
+    anterior = parseFloat(atual);
+    operador = op;
+    reiniciar = true;
+    mostrar();
+  }
+
+  function resolver() {
+    if (operador === null || anterior === null) return;
+    const r = calcular(anterior, parseFloat(atual), operador);
+    atual = arredonda(r);
+    anterior = null;
+    operador = null;
+    reiniciar = true;
+    mostrar();
+  }
+
+  function limpar() {
+    atual = '0'; anterior = null; operador = null; reiniciar = false;
+    mostrar();
+  }
+
+  function sinal() {
+    if (atual === '0' || atual === 'Erro') return;
+    atual = atual.startsWith('-') ? atual.slice(1) : '-' + atual;
+    mostrar();
+  }
+
+  function porcento() {
+    atual = arredonda(parseFloat(atual) / 100);
+    mostrar();
+  }
+
+  const acoes = { limpar, virgula, igual: resolver, sinal, porcento };
+
+  document.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (atual === 'Erro' && b.dataset.acao !== 'limpar') return;
+      if (b.dataset.num) digitar(b.dataset.num);
+      else if (b.dataset.op) escolherOperador(b.dataset.op);
+      else acoes[b.dataset.acao]();
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k >= '0' && k <= '9') digitar(k);
+    else if (k === ',' || k === '.') virgula();
+    else if ('+-*/'.includes(k)) escolherOperador(k);
+    else if (k === 'Enter' || k === '=') { e.preventDefault(); resolver(); }
+    else if (k === 'Escape') limpar();
+    else if (k === 'Backspace') {
+      atual = atual.length > 1 ? atual.slice(0, -1) : '0';
+      mostrar();
+    }
+  });
+
+  mostrar();
+</script>
+</body>
+</html>
